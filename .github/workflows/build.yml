@@ -1,4 +1,4 @@
-name: Build Snake3D
+name: Build games
 on:
   push:
   workflow_dispatch:
@@ -13,14 +13,23 @@ jobs:
       - name: Compile for TrimUI Brick (aarch64)
         run: |
           docker run --rm --platform linux/arm64 -v "$PWD":/src -w /src arm64v8/ubuntu:18.04 \
-            bash -c 'apt-get update && apt-get install -y gcc libsdl2-dev && gcc -O2 -o snake3d snake3d.c $(sdl2-config --cflags --libs) -lm'
+            bash -c 'apt-get update && apt-get install -y gcc libsdl2-dev && for g in snake3d hoppyroad; do if [ -f $g.c ]; then gcc -O2 -o $g $g.c $(sdl2-config --cflags --libs) -lm; fi; done'
       - name: Package
         run: |
-          mkdir Snake3D
-          cp snake3d Snake3D/
-          printf '#!/bin/sh\ncd "$(dirname "$0")"\nchmod +x ./snake3d\n./snake3d > log.txt 2>&1\n' > Snake3D/launch.sh
-          printf '{"label":"Snake 3D","icon":"","iconsel":"","launch":"launch.sh","description":"3D-style snake"}\n' > Snake3D/config.json
+          pack() {
+            d=$1; b=$2
+            if [ -f $b ]; then
+              mkdir -p $d
+              cp $b $d/
+              printf '#!/bin/sh\ncd "$(dirname "$0")"\nchmod +x ./%s\n./%s > log.txt 2>&1\n' $b $b > $d/launch.sh
+              cp $d/launch.sh $d/mux_launch.sh
+            fi
+          }
+          pack Snake3D snake3d
+          pack HoppyRoad hoppyroad
       - uses: actions/upload-artifact@v4
         with:
-          name: Snake3D
-          path: Snake3D
+          name: Games
+          path: |
+            Snake3D
+            HoppyRoad

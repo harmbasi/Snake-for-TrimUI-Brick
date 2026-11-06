@@ -1,0 +1,26 @@
+name: Build Snake3D
+on:
+  push:
+  workflow_dispatch:
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: docker/setup-qemu-action@v3
+        with:
+          platforms: arm64
+      - name: Compile for TrimUI Brick (aarch64)
+        run: |
+          docker run --rm --platform linux/arm64 -v "$PWD":/src -w /src arm64v8/ubuntu:18.04 \
+            bash -c 'apt-get update && apt-get install -y gcc libsdl2-dev && gcc -O2 -o snake3d snake3d.c $(sdl2-config --cflags --libs) -lm'
+      - name: Package
+        run: |
+          mkdir Snake3D
+          cp snake3d Snake3D/
+          printf '#!/bin/sh\ncd "$(dirname "$0")"\nchmod +x ./snake3d\n./snake3d > log.txt 2>&1\n' > Snake3D/launch.sh
+          printf '{"label":"Snake 3D","icon":"","iconsel":"","launch":"launch.sh","description":"3D-style snake"}\n' > Snake3D/config.json
+      - uses: actions/upload-artifact@v4
+        with:
+          name: Snake3D
+          path: Snake3D
